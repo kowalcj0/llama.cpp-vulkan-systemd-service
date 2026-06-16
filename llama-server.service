@@ -1,4 +1,3 @@
-# save it to /etc/systemd/system/llama-server.service
 [Unit]
 Description=llama.cpp server (Vulkan)
 After=network-online.target
