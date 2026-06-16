@@ -5,9 +5,12 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-User=llama
-Group=llama
-SupplementaryGroups=render
+
+# If you're running this service in an unprivileged LXC container
+# Then keep these lines commented out.
+# User=llama
+# Group=llama
+# SupplementaryGroups=render
 
 # Point at the "current" symlink — the update script flips this atomically
 ExecStart=/opt/llama-server/current/llama-server \

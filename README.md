@@ -13,6 +13,8 @@ mkdir -p /models /opt/llama-server /var/cache/llama-updater /var/lib/llama-updat
 # Copy your models to /models, e.g.
 cp Qwen3.6-27B-UD-Q6_K_XL.gguf /models/
 
+# If you're running this service in an uprivileged LXC container with GPU passthrough,
+# then skip the user creation step below
 # Create the service user (render group needed for GPU/Vulkan access)
 useradd -r -s /usr/sbin/nologin -d /opt/llama-server llama
 usermod -aG render llama
