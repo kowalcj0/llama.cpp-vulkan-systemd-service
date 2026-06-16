@@ -9,3 +9,12 @@ Type=oneshot
 ExecStart=/usr/local/bin/update-llama-server
 StandardOutput=journal
 StandardError=journal
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/llama-server /var/lib/llama-updater /var/cache/llama-updater
+DeviceAllow=char-dri rw
+DevicePolicy=auto
