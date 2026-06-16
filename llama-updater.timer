@@ -1,0 +1,12 @@
+# copy to /etc/systemd/system/llama-updater.timer
+[Unit]
+Description=Daily llama.cpp update check
+Requires=llama-updater.service
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=600
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,11 @@
+# copy to /etc/systemd/system/llama-updater.service
+[Unit]
+Description=Check for and apply llama.cpp updates
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/update-llama-server
+StandardOutput=journal
+StandardError=journal

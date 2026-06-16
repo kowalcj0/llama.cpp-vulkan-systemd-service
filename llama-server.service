@@ -1,0 +1,58 @@
+# save it to /etc/systemd/system/llama-server.service
+[Unit]
+Description=llama.cpp server (Vulkan)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=llama
+Group=llama
+
+# Point at the "current" symlink — the update script flips this atomically
+ExecStart=/opt/llama-server/current/llama-server \
+    --host 0.0.0.0 \
+    --port 9000 \
+    --ctx-size 262144 \
+    --cache-type-k q4_0 \
+    --cache-type-v q4_0 \
+    -fa on \
+    --temperature 0.6 \
+    --min-p 0.0 \
+    --top-p 0.95 \
+    --presence-penalty 0.0 \
+    --repeat-penalty 1.0 \
+    --top-k 20 \
+    --n-gpu-layers 999 \
+    --model /models/Qwen3.6-27B-UD-Q6_K_XL.gguf
+
+# Graceful shutdown: SIGTERM, then SIGKILL after 90s
+TimeoutStopSec=90
+KillMode=mixed
+KillSignal=SIGTERM
+
+# Always restart unless stopped manually
+Restart=on-failure
+RestartSec=5
+
+# Security hardening (remove if it causes issues)
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/opt/llama-server
+ReadOnlyPaths=/models
+
+# Add these for Vulkan & stability
+DeviceAllow=/dev/dri rw
+DevicePolicy=auto
+RuntimeDirectory=llama-server
+LogsDirectory=llama-server
+StandardOutput=journal
+StandardError=journal
+# Optional: limit memory if running large models
+# LimitAS=128G
+
+[Install]
+WantedBy=multi-user.target
+

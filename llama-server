@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# copy to /opt/llama-server/current/bin/llama-server
+
+# ============================================================
+# Configuration — tweak these to match your setup
+# ============================================================
+STATE_FILE="/var/lib/llama-updater/current_version"
+DEPLOY_DIR="/opt/llama-server"
+DOWNLOAD_DIR="/var/cache/llama-updater"
+SERVICE_NAME="llama-server"
+GITHUB_API="https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=1"
+ASSET_PATTERN="llama-b.*-bin-ubuntu-vulkan-x64.tar.gz"
+
+# ============================================================
+# Bootstrap directories
+# ============================================================
+# Remove $STATE_FILE from mkdir
+mkdir -p "$(dirname "$STATE_FILE")" "$DOWNLOAD_DIR" "$DEPLOY_DIR"
+
+# ============================================================
+# Determine current installed version
+# ============================================================
+if [[ -f "$STATE_FILE" ]]; then
+    CURRENT_TAG=$(cat "$STATE_FILE")
+    echo "[INFO] Currently installed: $CURRENT_TAG"
+else
+    CURRENT_TAG="none"
+    echo "[INFO] No previous installation found."
+fi
+
+# ============================================================
+# Fetch latest release info from GitHub
+# ============================================================
+echo "[INFO] Querying GitHub API for latest release..."
+RELEASE_JSON=$(curl -sSf "$GITHUB_API")
+LATEST_TAG=$(echo "$RELEASE_JSON" | jq -r '.[0].tag_name')
+
+if [[ -z "$LATEST_TAG" || "$LATEST_TAG" == "null" ]]; then
+    echo "[ERROR] Could not determine latest release tag."
+    exit 1
+fi
+
+echo "[INFO] Latest release: $LATEST_TAG"
+
+# ============================================================
+# Compare and decide
+# ============================================================
+if [[ "$LATEST_TAG" == "$CURRENT_TAG" ]]; then
+    echo "[INFO] Already on the latest version. Nothing to do."
+    exit 0
+fi
+
+# ============================================================
+# Find the Vulkan asset download URL
+# ============================================================
+ASSET_URL=$(echo "$RELEASE_JSON" | jq -r \
+    --arg pattern "$ASSET_PATTERN" \
+    '.[0].assets[] | select(.name | test($pattern)) | .browser_download_url')
+
+if [[ -z "$ASSET_URL" || "$ASSET_URL" == "null" ]]; then
+    echo "[ERROR] Could not find Vulkan x64 asset in release $LATEST_TAG."
+    exit 1
+fi
+
+ASSET_NAME=$(basename "$ASSET_URL")
+echo "[INFO] Found Vulkan asset: $ASSET_NAME"
+
+# ============================================================
+# Download the new release
+# ============================================================
+ARCHIVE_PATH="$DOWNLOAD_DIR/$ASSET_NAME"
+echo "[INFO] Downloading $ASSET_URL ..."
+curl -sSfL -o "$ARCHIVE_PATH" "$ASSET_URL"
+
+# ============================================================
+# Extract into a versioned subdirectory
+# ============================================================
+VERSIONED_DIR="$DEPLOY_DIR/$LATEST_TAG"
+rm -rf "$VERSIONED_DIR"
+mkdir -p "$VERSIONED_DIR"
+
+echo "[INFO] Extracting to $VERSIONED_DIR ..."
+tar -xzf "$ARCHIVE_PATH" -C "$VERSIONED_DIR" --strip-components=1
+
+
+# Safer extraction (fails safely if no root dir)
+tar -xzf "$ARCHIVE_PATH" -C "$VERSIONED_DIR" --strip-components=1 || {
+    echo "[ERROR] Extraction failed. Archive structure may have changed."
+    exit 1
+}
+
+# Make binaries executable (in case they aren't)
+# Safer permission fix
+find "$VERSIONED_DIR" -type f -exec chmod +x {} + 2>/dev/null || true
+
+# ============================================================
+# Atomic symlink update
+# ============================================================
+CURRENT_LINK="$DEPLOY_DIR/current"
+ln -sfn "$VERSIONED_DIR" "${CURRENT_LINK}.tmp"
+mv -Tf "${CURRENT_LINK}.tmp" "$CURRENT_LINK"
+
+
+# ============================================================
+# Restart & verify
+# ============================================================
+echo "[INFO] Restarting $SERVICE_NAME..."
+systemctl restart "$SERVICE_NAME"
+
+echo "[INFO] Waiting for $SERVICE_NAME to become active..."
+HEALTHY=false
+for i in {1..15}; do
+    if systemctl is-active --quiet "$SERVICE_NAME"; then
+        HEALTHY=true
+        break
+    fi
+    sleep 2
+done
+
+if [[ "$HEALTHY" == "true" ]]; then
+    echo "[INFO] $SERVICE_NAME started successfully."
+    echo "$LATEST_TAG" > "$STATE_FILE"
+    echo "[INFO] Updated to $LATEST_TAG."
+else
+    echo "[ERROR] $SERVICE_NAME failed to start! Rolling back..."
+    if [[ "$CURRENT_TAG" != "none" && -d "$DEPLOY_DIR/$CURRENT_TAG" ]]; then
+        ln -sfn "$DEPLOY_DIR/$CURRENT_TAG" "${CURRENT_LINK}.tmp"
+        mv -Tf "${CURRENT_LINK}.tmp" "$CURRENT_LINK"
+        systemctl restart "$SERVICE_NAME"
+        echo "[WARN] Rolled back to $CURRENT_TAG."
+    fi
+    exit 1
+fi
+
+
+# ============================================================
+# Cleanup old versions (keep last 3)
+# ============================================================
+echo "[INFO] Cleaning up old versions..."
+ls -1d "$DEPLOY_DIR"/b* 2>/dev/null | sort -V | head -n -3 | while read -r old_dir; do
+    echo "[INFO] Removing $old_dir"
+    rm -rf "$old_dir"
+done
+
+echo "[INFO] Done."
