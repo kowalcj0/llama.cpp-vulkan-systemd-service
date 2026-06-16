@@ -44,7 +44,7 @@ ReadWritePaths=/opt/llama-server
 ReadOnlyPaths=/models
 
 # Add these for Vulkan & stability
-DeviceAllow=/dev/dri rw
+DeviceAllow=char-dri rw
 DevicePolicy=auto
 RuntimeDirectory=llama-server
 LogsDirectory=llama-server
