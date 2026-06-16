@@ -15,5 +15,8 @@ PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=yes
 ReadWritePaths=/opt/llama-server /var/lib/llama-updater /var/cache/llama-updater
-DeviceAllow=char-dri rw
 DevicePolicy=auto
+
+# Grant access to GPU devices
+DeviceAllow=/dev/dri rw
+BindReadOnlyPaths=/dev/dri

@@ -43,8 +43,11 @@ ProtectHome=yes
 ReadWritePaths=/opt/llama-server
 ReadOnlyPaths=/models
 
+# Grant access to GPU devices
+DeviceAllow=/dev/dri rw
+BindReadOnlyPaths=/dev/dri
+
 # Add these for Vulkan & stability
-DeviceAllow=char-dri rw
 DevicePolicy=auto
 RuntimeDirectory=llama-server
 LogsDirectory=llama-server
