@@ -82,18 +82,14 @@ rm -rf "$VERSIONED_DIR"
 mkdir -p "$VERSIONED_DIR"
 
 echo "[INFO] Extracting to $VERSIONED_DIR ..."
-tar -xzf "$ARCHIVE_PATH" -C "$VERSIONED_DIR" --strip-components=1
-
-
-# Safer extraction (fails safely if no root dir)
 tar -xzf "$ARCHIVE_PATH" -C "$VERSIONED_DIR" --strip-components=1 || {
     echo "[ERROR] Extraction failed. Archive structure may have changed."
     exit 1
 }
 
-# Make binaries executable (in case they aren't)
-# Safer permission fix
-find "$VERSIONED_DIR" -type f -exec chmod +x {} + 2>/dev/null || true
+# Make binaries executable (llama-server and any helper binaries)
+chmod +x "$VERSIONED_DIR/llama-server" 2>/dev/null || true
+chmod +x "$VERSIONED_DIR/bin/"* 2>/dev/null || true
 
 # ============================================================
 # Atomic symlink update
@@ -139,7 +135,7 @@ fi
 # Cleanup old versions (keep last 3)
 # ============================================================
 echo "[INFO] Cleaning up old versions..."
-ls -1d "$DEPLOY_DIR"/b* 2>/dev/null | sort -V | head -n -3 | while read -r old_dir; do
+find "$DEPLOY_DIR" -maxdepth 1 -mindepth 1 -type d ! -name current | sort -V | head -n -3 | while read -r old_dir; do
     echo "[INFO] Removing $old_dir"
     rm -rf "$old_dir"
 done
