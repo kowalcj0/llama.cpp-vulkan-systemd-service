@@ -13,8 +13,9 @@ mkdir -p /models /opt/llama-server /var/cache/llama-updater /var/lib/llama-updat
 # Copy your models to /models, e.g.
 cp Qwen3.6-27B-UD-Q6_K_XL.gguf /models/
 
-# Create the service user and set ownership
+# Create the service user (render group needed for GPU/Vulkan access)
 useradd -r -s /usr/sbin/nologin -d /opt/llama-server llama
+usermod -aG render llama
 chown llama:llama /opt/llama-server
 
 # Copy the script and make it executable
