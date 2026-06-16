@@ -1,6 +1,8 @@
 Auto-updating llama.cpp vulkan systemd service
 ----------------------------------------------
 
+A set of systemd units and a Bash update script that deploy and maintain a self-updating [llama.cpp](https://github.com/ggml-org/llama.cpp) OpenAI-compatible server using Vulkan GPU acceleration on Linux. The update script polls the `ggml-org/llama.cpp` GitHub releases, downloads the latest Vulkan x64 binary, and atomically swaps a `current` symlink so the server always runs the newest release with minimal downtime. If the new binary fails to start, the script rolls back to the previous version automatically. A daily systemd timer keeps things current, while the service unit provides security hardening, GPU device access, and automatic restart on failure.
+
 ## First-Time Setup (Quick Start)
 
 ```shell
@@ -85,5 +87,4 @@ swap: 512
 unprivileged: 1
 lxc.cgroup2.cpuset.cpus: 40-79
 ```
-```
-```
+
