@@ -52,3 +52,38 @@ systemctl status llama-updater.timer
 systemctl status llama-server
 ```
 
+
+## Extras
+
+### amdgpu_top
+
+`amdgpu_top` is a great tool for monitoring AMD GPUs.
+Unfortunately, it's not (yet) available on Debian 13 (Trixie) provided by Proxmox.
+
+To install it manually, run:
+```shell
+wget https://github.com/Umio-Yasuno/amdgpu_top/releases/download/v0.11.5/amdgpu-top_without_gui_0.11.5-1_amd64.deb
+apt install ./amdgpu-top_without_gui_0.11.5-1_amd64.deb
+```
+
+
+### Unprivileged LXC container
+
+An example configuration of a LXC container with GPU passthrough:
+```ini
+arch: amd64
+cores: 40
+dev0: /dev/dri/renderD128
+features: nesting=1
+hostname: llamacpp
+memory: 163840
+mp0: /root/models,mp=/models
+net0: name=eth0,bridge=vmbr0,firewall=1,hwaddr=BC:24:11:44:0B:2B,ip=dhcp,type=veth
+ostype: debian
+rootfs: local-zfs:subvol-136-disk-0,size=150G
+swap: 512
+unprivileged: 1
+lxc.cgroup2.cpuset.cpus: 40-79
+```
+```
+```
